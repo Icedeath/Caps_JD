@@ -111,7 +111,7 @@ def train(model, data, args):
     checkpoint = callbacks.ModelCheckpoint(args.save_file, monitor='val_loss', verbose=1, save_best_only=True, 
                                   save_weights_only=True, mode='auto', period=1)
     lr_decay = callbacks.LearningRateScheduler(schedule=lambda epoch: args.lr * (args.lr_decay ** epoch))
-    model = multi_gpu_model(model, gpus=8)
+    model = multi_gpu_model(model, gpus=args.num_gpus)
     model.compile(optimizer=optimizers.Adam(lr=args.lr),
                   loss= margin_loss1,
                   metrics={})
@@ -126,10 +126,10 @@ def get_accuracy(cm):
     return [float(cm[i,i]/np.sum(cm[0:args.num_classes,i])) for i in xrange(args.num_classes)]
 
 
-def save_single():
+def save_single(args):
     model = CapsNet(input_shape=x_train.shape[1:], n_class=args.num_classes, routings=args.routings)
 
-    p_model = multi_gpu_model(model, gpus=8)
+    p_model = multi_gpu_model(model, gpus=args.num_gpus)
     p_model.compile(optimizer=optimizers.Adam(lr=args.lr),
                   loss= margin_loss,
                   metrics={})    
@@ -142,13 +142,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Capsule Network on MNIST.")
     parser.add_argument('--epochs', default=30, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
-    parser.add_argument('--lr', default=0.0003, type=float,
+    parser.add_argument('--lr', default=0.00035, type=float,
                         help="初始学习率")
-    parser.add_argument('--lr_decay', default=0.99, type=float,
+    parser.add_argument('--lr_decay', default=0.988, type=float,
                         help="学习率衰减")
     parser.add_argument('-r', '--routings', default=3, type=int,
                         help="routing迭代次数")
-    parser.add_argument('-sf', '--save_file', default='./weights/5000_Lt_3.h5',
+    parser.add_argument('-sf', '--save_file', default='5000_Lt_3.h5',
                         help="权重文件名称")
     parser.add_argument('-t', '--test', default=0,type=int,
                         help="测试模式，设为非0值激活，跳过训练")
@@ -162,6 +162,7 @@ if __name__ == "__main__":
                         help="类别数")
     parser.add_argument('-dc', '--dim_capsule', default=16)
     parser.add_argument('-tm', '--target_max', default=3, type=int)
+    parser.add_argument('-ng', '--num_gpus', default=2, type=int)
     args = parser.parse_args()
     print(args)
     
@@ -220,13 +221,13 @@ if __name__ == "__main__":
     print('-'*30 + 'Begin: test' + '-'*30)
     
     y_pred1 = model.predict(x_train, batch_size=args.batch_size,verbose=1)
-    sio.savemat('final_output.mat', {'y_pred1':y_pred1, 'y_train':y_train, 'history':history})
+    sio.savemat('final_output.mat', {'y_pred1':y_pred1, 'y_train':y_train})
     y_pred = (np.sign(y_pred1-0.62)+1)/2
     idx_yt = np.sum(y_train, axis = 1)
     idx_yp = np.sum(y_pred, axis = 1)
     idx_cm = np.zeros([args.num_classes + 1, args.num_classes+1])
     idx = np.arange(0, args.num_classes)
-    for i in xrange(y_pred.shape[0]):
+    for i in range(y_pred.shape[0]):
         if np.mod(i,20000)==0:
             print(i)
         y_p = y_pred[i,:]
@@ -252,11 +253,16 @@ if __name__ == "__main__":
             idx_cm[idx2_p, idx2_t] += 1
 
     acc = get_accuracy(idx_cm) 
+    
     pm = np.sum(idx_cm[args.num_classes,:])/(np.sum(
             idx_cm[0:args.num_classes,0:args.num_classes])+np.sum(idx_cm[args.num_classes,:]))  # Missing Alarm
     pf = np.sum(idx_cm[:, args.num_classes])/(np.sum(
             idx_cm[0:args.num_classes,0:args.num_classes])+np.sum(idx_cm[:,args.num_classes]))  #False Alarm
     print('-' * 30 + 'End  : test' + '-' * 30)   
+    
+    print('Test Accuracy = %f'%acc)
+    print('False Alarm rate = %f'%pf)
+    print('Missing Alarm rate = %f'%pm)
     
 '''
     from keras.utils import plot_model
