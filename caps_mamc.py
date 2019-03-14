@@ -139,27 +139,18 @@ def save_single(args):
    
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Capsule Network on MNIST.")
+    parser = argparse.ArgumentParser(description="Capsule Network on MAMC.")
     parser.add_argument('--epochs', default=30, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
-    parser.add_argument('--lr', default=0.00035, type=float,
-                        help="初始学习率")
-    parser.add_argument('--lr_decay', default=0.988, type=float,
-                        help="学习率衰减")
-    parser.add_argument('-r', '--routings', default=3, type=int,
-                        help="routing迭代次数")
-    parser.add_argument('-sf', '--save_file', default='5000_Lt_3.h5',
-                        help="权重文件名称")
-    parser.add_argument('-t', '--test', default=0,type=int,
-                        help="测试模式，设为非0值激活，跳过训练")
-    parser.add_argument('-l', '--load', default=0,type=int,
-                        help="是否载入模型，设为1激活")
-    parser.add_argument('-p', '--plot', default=0,type=int,
-                        help="训练结束后画出loss变化曲线，设为1激活")
-    parser.add_argument('-d', '--dataset', default='./samples/dataset_MAMC_8_3.mat',
-                        help="需要载入的数据文件，MATLAB -v7.3格式")
-    parser.add_argument('-n', '--num_classes', default=8,
-                        help="类别数")
+    parser.add_argument('--lr', default=0.00035, type=float)
+    parser.add_argument('--lr_decay', default=0.988, type=float)
+    parser.add_argument('-r', '--routings', default=3, type=int)
+    parser.add_argument('-sf', '--save_file', default='5000_Lt_3.h5')
+    parser.add_argument('-t', '--test', default=0,type=int)
+    parser.add_argument('-l', '--load', default=0,type=int)
+    parser.add_argument('-p', '--plot', default=0,type=int)
+    parser.add_argument('-d', '--dataset', default='./samples/dataset_MAMC_8_3.mat')
+    parser.add_argument('-n', '--num_classes', default=8)
     parser.add_argument('-dc', '--dim_capsule', default=16)
     parser.add_argument('-tm', '--target_max', default=3, type=int)
     parser.add_argument('-ng', '--num_gpus', default=2, type=int)
@@ -181,16 +172,16 @@ if __name__ == "__main__":
         for i in data:
             locals()[i] = data[i].value
             
-    x_train1 = np.concatenate((x_train1, x_train), axis = 1)
-    y_train1 = np.concatenate((y_train1, y_train), axis = 1)
+    x_train1 = np.concatenate((x_train1, x_train), axis = 0)
+    y_train1 = np.concatenate((y_train1, y_train), axis = 0)
     
     print('Loading 3/3...')
     with h5py.File('dataset_MAMC_8_3_3.mat', 'r') as data:
         for i in data:
             locals()[i] = data[i].value
             
-    x_train = np.concatenate((x_train1, x_train), axis = 1)
-    y_train = np.concatenate((y_train1, y_train), axis = 1)
+    x_train = np.concatenate((x_train1, x_train), axis = 0)
+    y_train = np.concatenate((y_train1, y_train), axis = 0)
     
     del x_train1
     del y_train1
