@@ -24,48 +24,48 @@ K.set_image_data_format('channels_last')
 
 def CapsNet(input_shape, n_class, routings):
     x = layers.Input(shape=input_shape)
-    conv1 = layers.Conv2D(filters=64, kernel_size=(1,3), strides=(1,2), padding='same')(x)
+    conv1 = layers.Conv2D(filters=64, kernel_size=(1,12), strides=(1,1), padding='same',dilation_rate = 5)(x)
     conv1 = ELU(alpha=0.5)(conv1)
     conv1 = BN()(conv1)
-    conv1 = layers.Conv2D(filters=64, kernel_size=(1,3), strides=(1,1), padding='same')(conv1)
-    conv1 = ELU(alpha=0.5)(conv1)
-    conv1 = BN()(conv1)
-    conv1 = layers.MaxPooling2D((1, 2), strides=(1, 2))(conv1)
-    
-    conv1 = layers.Conv2D(filters=96, kernel_size=(1,3), strides=1, padding='same')(conv1)
-    conv1 = ELU(alpha=0.5)(conv1)
-    conv1 = BN()(conv1)
-    conv1 = layers.Conv2D(filters=96, kernel_size=(1,3), strides=1, padding='same')(conv1)
+    conv1 = layers.Conv2D(filters=64, kernel_size=(1,12), strides=(1,2), padding='same',dilation_rate = 1)(conv1)
     conv1 = ELU(alpha=0.5)(conv1)
     conv1 = BN()(conv1)
     conv1 = layers.MaxPooling2D((1, 2), strides=(1, 2))(conv1)
     
-    conv1 = layers.Conv2D(filters=128, kernel_size=(1,3), strides=1, padding='same')(conv1)
+    conv1 = layers.Conv2D(filters=96, kernel_size=(1,9), strides=1, padding='same',dilation_rate = 4)(conv1)
     conv1 = ELU(alpha=0.5)(conv1)
     conv1 = BN()(conv1)
-    conv1 = layers.Conv2D(filters=128, kernel_size=(1,3), strides=1, padding='same')(conv1)
+    conv1 = layers.Conv2D(filters=96, kernel_size=(1,9), strides=1, padding='same',dilation_rate = 4)(conv1)
+    conv1 = ELU(alpha=0.5)(conv1)
+    conv1 = BN()(conv1)
+    conv1 = layers.MaxPooling2D((1, 2), strides=(1, 2))(conv1)
+    
+    conv1 = layers.Conv2D(filters=128, kernel_size=(1,9), strides=1, padding='same',dilation_rate = 3)(conv1)
+    conv1 = ELU(alpha=0.5)(conv1)
+    conv1 = BN()(conv1)
+    conv1 = layers.Conv2D(filters=128, kernel_size=(1,9), strides=1, padding='same',dilation_rate = 3)(conv1)
     conv1 = ELU(alpha=0.5)(conv1)
     conv1 = BN()(conv1)
     conv1 = layers.MaxPooling2D((1, 2), strides=(1, 2))(conv1)
 
-    conv1 = layers.Conv2D(filters=192, kernel_size=(1,3), strides=1, padding='same')(conv1)
+    conv1 = layers.Conv2D(filters=192, kernel_size=(1,9), strides=1, padding='same',dilation_rate = 2)(conv1)
     conv1 = ELU(alpha=0.5)(conv1)
     conv1 = BN()(conv1)
-    conv1 = layers.Conv2D(filters=192, kernel_size=(1,3), strides=1, padding='same')(conv1)
+    conv1 = layers.Conv2D(filters=192, kernel_size=(1,9), strides=1, padding='same',dilation_rate = 2)(conv1)
     conv1 = ELU(alpha=0.5)(conv1)
     conv1 = BN()(conv1)
-    conv1 = layers.Conv2D(filters=192, kernel_size=(1,3), strides=1, padding='same')(conv1)
+    conv1 = layers.Conv2D(filters=192, kernel_size=(1,9), strides=1, padding='same',dilation_rate = 2)(conv1)
     conv1 = ELU(alpha=0.5)(conv1)
     conv1 = BN()(conv1)
     conv1 = layers.MaxPooling2D((1, 2), strides=(1, 2))(conv1)
 
-    conv1 = layers.Conv2D(filters=256, kernel_size=(1,3), strides=1, padding='same')(conv1)
+    conv1 = layers.Conv2D(filters=256, kernel_size=(1,6), strides=1, padding='same',dilation_rate = 2)(conv1)
     conv1 = ELU(alpha=0.5)(conv1)
     conv1 = BN()(conv1)
-    conv1 = layers.Conv2D(filters=256, kernel_size=(1,3), strides=1, padding='same')(conv1)
+    conv1 = layers.Conv2D(filters=256, kernel_size=(1,6), strides=1, padding='same',dilation_rate = 2)(conv1)
     conv1 = ELU(alpha=0.5)(conv1)
     conv1 = BN()(conv1)
-    conv1 = layers.Conv2D(filters=256, kernel_size=(1,3), strides=1, padding='same')(conv1)
+    conv1 = layers.Conv2D(filters=256, kernel_size=(1,6), strides=1, padding='same',dilation_rate = 2)(conv1)
     conv1 = ELU(alpha=0.5)(conv1)
     conv1 = BN()(conv1)
     
@@ -81,7 +81,7 @@ def CapsNet(input_shape, n_class, routings):
     return model
 
 
-def margin_loss(y_true, y_pred, margin = 0.4, threshold = 0.12):
+def margin_loss(y_true, y_pred, margin = 0.4, threshold = 0.04):
     y_pred = y_pred - 0.5
     t_1 = threshold+0.05
     t_2 = threshold-0.05
@@ -108,12 +108,12 @@ def margin_loss1(y_true, y_pred, margin = 0.4):
 def train(model, data, args):
     (x_train, y_train) = data
 
-    checkpoint = callbacks.ModelCheckpoint(args.save_file, monitor='val_loss', verbose=1, save_best_only=True, 
+    checkpoint = callbacks.ModelCheckpoint(args.save_file+'-{epoch:02d}.h5', monitor='val_loss', verbose=1, save_best_only=True, 
                                   save_weights_only=True, mode='auto', period=1)
     lr_decay = callbacks.LearningRateScheduler(schedule=lambda epoch: args.lr * (args.lr_decay ** epoch))
     model = multi_gpu_model(model, gpus=args.num_gpus)
     model.compile(optimizer=optimizers.Adam(lr=args.lr),
-                  loss= margin_loss1,
+                  loss= margin_loss,
                   metrics={})
     if args.load == 1:
         model.load_weights(args.save_file)
@@ -140,20 +140,19 @@ def save_single(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Capsule Network on MAMC.")
-    parser.add_argument('--epochs', default=30, type=int)
+    parser.add_argument('--epochs', default=20, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
-    parser.add_argument('--lr', default=0.00035, type=float)
+    parser.add_argument('--lr', default=0.0003, type=float)
     parser.add_argument('--lr_decay', default=0.988, type=float)
     parser.add_argument('-r', '--routings', default=3, type=int)
-    parser.add_argument('-sf', '--save_file', default='5000_Lt_3.h5')
+    parser.add_argument('-sf', '--save_file', default='5000_Lt_3')
     parser.add_argument('-t', '--test', default=0,type=int)
     parser.add_argument('-l', '--load', default=0,type=int)
     parser.add_argument('-p', '--plot', default=0,type=int)
-    parser.add_argument('-d', '--dataset', default='./samples/dataset_MAMC_8_3.mat')
     parser.add_argument('-n', '--num_classes', default=8)
     parser.add_argument('-dc', '--dim_capsule', default=16)
     parser.add_argument('-tm', '--target_max', default=3, type=int)
-    parser.add_argument('-ng', '--num_gpus', default=2, type=int)
+    parser.add_argument('-ng', '--num_gpus', default=4, type=int)
     args = parser.parse_args()
     print(args)
     
@@ -186,6 +185,9 @@ if __name__ == "__main__":
     del x_train1
     del y_train1
     
+    x_train = x_train[:,0:6000]
+    y_train = y_train[:, :]
+    
     x_train = x_train.reshape(x_train.shape[0], 1, x_train.shape[1], 1)
     
     print('Building model...')
@@ -213,7 +215,7 @@ if __name__ == "__main__":
     
     y_pred1 = model.predict(x_train, batch_size=args.batch_size,verbose=1)
     sio.savemat('final_output.mat', {'y_pred1':y_pred1, 'y_train':y_train})
-    y_pred = (np.sign(y_pred1-0.62)+1)/2
+    y_pred = (np.sign(y_pred1-0.52)+1)/2
     idx_yt = np.sum(y_train, axis = 1)
     idx_yp = np.sum(y_pred, axis = 1)
     idx_cm = np.zeros([args.num_classes + 1, args.num_classes+1])
