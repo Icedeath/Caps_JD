@@ -1,3 +1,11 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Apr  3 19:02:52 2019
+
+@author: icedeath
+"""
+
 #coding=utf
 
 from keras.utils import multi_gpu_model
@@ -113,7 +121,7 @@ def train(model, data, args):
     lr_decay = callbacks.LearningRateScheduler(schedule=lambda epoch: args.lr * (args.lr_decay ** epoch))
     model = multi_gpu_model(model, gpus=args.num_gpus)
     model.compile(optimizer=optimizers.Adam(lr=args.lr),
-                  loss= margin_loss1,
+                  loss= margin_loss,
                   metrics={})
     if args.load == 1:
         model.load_weights(args.save_file)
@@ -159,106 +167,16 @@ if __name__ == "__main__":
     
     K.set_image_data_format('channels_last')
     
-    print('Loading 1/3...')
-    with h5py.File('dataset_MAMC_8_3_1.mat', 'r') as data:
-        for i in data:
-            locals()[i] = data[i].value
-            
-    x_train1 = x_train
-    y_train1 = y_train
+
     
-    print('Loading 2/3...')
-    with h5py.File('dataset_MAMC_8_3_2.mat', 'r') as data:
-        for i in data:
-            locals()[i] = data[i].value
-            
-    x_train1 = np.concatenate((x_train1, x_train), axis = 0)
-    y_train1 = np.concatenate((y_train1, y_train), axis = 0)
-    
-    print('Loading 3/3...')
-    with h5py.File('dataset_MAMC_8_3_3.mat', 'r') as data:
-        for i in data:
-            locals()[i] = data[i].value
-            
-    x_train = np.concatenate((x_train1, x_train), axis = 0)
-    y_train = np.concatenate((y_train1, y_train), axis = 0)
-    
-    del x_train1
-    del y_train1
-    
-    x_train = x_train[:,0:6000]
-    y_train = y_train[:, :]
+    x_train = np.ones([10,6000])
+    y_train = np.ones([10, 8])
     
     x_train = x_train.reshape(x_train.shape[0], 1, x_train.shape[1], 1)
     
     print('Building model...')
     model = CapsNet(input_shape=x_train.shape[1:], n_class=args.num_classes, routings=args.routings)
-
     
+    print('Saving model to single GPU version...')
+    save_single(args)    
     
-    if args.test == 0:    
-        history = train(model=model, data=((x_train, y_train)), args=args)
-        save_single()
-        if args.plot == 1:    
-            train_loss = np.array(history['loss'])
-            val_loss = np.array(history['val_loss'])
-            plt.plot(np.arange(0, args.epochs, 1),train_loss,label="train_loss",color="red",linewidth=1.5)
-            plt.plot(np.arange(0, args.epochs, 1),val_loss,label="val_loss",color="blue",linewidth=1.5)
-            plt.legend()
-            plt.show()
-            plt.savefig('loss.png')
-    else:
-        args.epochs=0
-        history = train(model=model, data=((x_train, y_train)), args=args)
-        print('Loading %s' %args.save_file)
-    
-    print('-'*30 + 'Begin: test' + '-'*30)
-    
-    y_pred1 = model.predict(x_train, batch_size=args.batch_size,verbose=1)
-    sio.savemat('final_output.mat', {'y_pred1':y_pred1, 'y_train':y_train,'history':history})
-    y_pred = (np.sign(y_pred1-0.54)+1)/2
-    idx_yt = np.sum(y_train, axis = 1)
-    idx_yp = np.sum(y_pred, axis = 1)
-    idx_cm = np.zeros([args.num_classes + 1, args.num_classes+1])
-    idx = np.arange(0, args.num_classes)
-    for i in range(y_pred.shape[0]):
-        if np.mod(i,20000)==0:
-            print(i)
-        y_p = y_pred[i,:]
-        y_t = y_train[i,:]
-        y_ref = y_p + y_t
-        
-        idx1 = idx[y_ref==2]
-        if idx1.shape[0]!=0:
-            y_p[idx1] = 0
-            y_t[idx1] = 0
-            y_ref[idx1] = 0
-            idx_cm[idx1, idx1] += 1
-        if np.sum(y_ref)!=0:
-            idx2_p = idx[y_p==1]
-            idx2_t = idx[y_t==1]    
-            max_tar = np.max([idx2_p.shape[0],idx2_t.shape[0]])
-            re_p = np.ones(max_tar - idx2_p.shape[0],dtype = int)*args.num_classes
-            re_t = np.ones(max_tar - idx2_t.shape[0],dtype = int)*args.num_classes
-        
-            idx2_p = np.concatenate([idx2_p, re_p])
-            idx2_t = np.concatenate([idx2_t, re_t])
-        
-            idx_cm[idx2_p, idx2_t] += 1
-
-    acc = get_accuracy(idx_cm) 
-    
-    pm = np.sum(idx_cm[args.num_classes,:])/(np.sum(
-            idx_cm[0:args.num_classes,0:args.num_classes])+np.sum(idx_cm[args.num_classes,:]))  # Missing Alarm
-    pf = np.sum(idx_cm[:, args.num_classes])/(np.sum(
-            idx_cm[0:args.num_classes,0:args.num_classes])+np.sum(idx_cm[:,args.num_classes]))  #False Alarm
-    print('-' * 30 + 'End  : test' + '-' * 30)   
-    
-    print('Test Accuracy = %f'%acc)
-    print('False Alarm rate = %f'%pf)
-    print('Missing Alarm rate = %f'%pm)
-    
-'''
-    from keras.utils import plot_model
-    plot_model(model, to_file='model.png',show_shapes = True)
-'''
